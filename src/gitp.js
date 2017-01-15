@@ -1,57 +1,117 @@
 #! /usr/bin/env node
-const { systemConfig, globalConfig, localConfig } = require('./../src/app.js')
-const inquirer = require('inquirer')
+import { err, header, item, success, bold, table, desc } from './output.js'
+import { createProfile, getProfile, listProfiles, removeProfile } from './profiles.js'
+import { getSystemConfig, getGlobalConfig, getLocalConfig, setSystemConfig, setGlobalConfig, setLocalConfig } from './git-config.js'
+import inquirer from 'inquirer'
 
 async function main () {
   let operation = await askOperation()
   console.log(operation)
-  if (operation === 'Show me my current configuration') {
+  if (operation === 'See my current profile and configuration') {
     let levels = await askOperationLevel()
     if (levels.includes('System')) {
-      await systemConfig()
+      let configs = await getSystemConfig()
+      console.log(header('System level config:'))
+      logConfigs(configs)
     }
     if (levels.includes('Global')) {
-      await globalConfig()
+      let configs = await getGlobalConfig()
+      console.log(header('Global level config:'))
+      logConfigs(configs)
     }
     if (levels.includes('Local')) {
-      await localConfig()
+      let configs = await getLocalConfig()
+      console.log(header('Local level config:'))
+      logConfigs(configs)
     }
+  }
+
+  if (operation === 'Save profile') {
+    let name = await askInput('Enter profile name:')
+    let levels = await askOperationLevel()
+    let systemConf = levels.includes('System') ? await getSystemConfig() : []
+    let globalConf = levels.includes('Global') ? await getGlobalConfig() : []
+    let localConf = levels.includes('Local') ? await getLocalConfig() : []
+
+    await createProfile(name, {
+      system: systemConf,
+      global: globalConf,
+      local: localConf
+    })
+    console.log(success(`Profile ${bold(name)} saved`))
+  }
+
+  if (operation === 'Load profile') {
+    let profiles = await listProfiles()
+    let selected = await askProfile(profiles)
+    let config = await getProfile(selected)
+
+    for (let {key, value} of config.system) {
+      await setSystemConfig(key, value)
+    }
+
+    for (let {key, value} of config.global) {
+      await setGlobalConfig(key, value)
+    }
+
+    for (let {key, value} of config.local) {
+      await setLocalConfig(key, value)
+    }
+
+    console.log(success(`Profile ${bold(selected)} loaded`))
+  }
+
+  if (operation === 'Remove profile') {
+    let profiles = await listProfiles()
+    let selected = await askProfile(profiles)
+    await removeProfile(selected)
+
+    console.log(success(`Profile ${bold(selected)} removed`))
+  }
+
+  if (operation === 'List profiles') {
+    let profiles = await listProfiles()
+    console.log(header('Profiles:'))
+    profiles.forEach(p => console.log(item(`  * ${p}`)))
   }
 }
 
-main()
-/*
-inquirer.prompt([askOperation(), askOperationLevel()]).then(answers => {
-  if (answers.operation === 'Show me my current configuration') {
-    askOperationLevel().then()
-    if (answers.levels.includes('System')) {
-      app.systemConfig()
-    }
-    if (answers.levels.includes('Global')) {
-      app.globalConfig()
-    }
-    if (answers.levels.includes('Local')) {
-      app.localConfig()
-    }
+async function mainCatched () {
+  try {
+    await main()
+  } catch (e) {
+    console.log(err(e.message || e))
   }
-  return answers
-}).then(answers => {
-  console.log(answers)
-})
-*/
+}
+
+mainCatched()
+
+function logConfigs (configs) {
+  let tableData = configs.map(i => [item(i.key), desc(i.value)])
+  console.log(table(tableData))
+}
+
 function askOperation () {
+  return askChoices('What do you need:', [
+    'See my current profile and configuration',
+    'Load profile',
+    'List profiles',
+    'Save profile',
+    'Remove profile'
+  ])
+}
+
+function askProfile (profiles) {
+  return askChoices('Select profile:', profiles)
+}
+
+function askChoices (message, choices) {
   return inquirer.prompt([{
     type: 'list',
-    name: 'operation',
-    message: 'What do you need:',
-    choices: [
-      'Show me my current configuration',
-      'Update key of my configuration',
-      'Remove key of my configuration',
-      'Save profile',
-      'Create new profile'
-    ]
-  }]).then(a => a.operation)
+    name: 'item',
+    message,
+    choices
+  }]).then(a => a.item)
 }
 
 function askOperationLevel () {
@@ -65,4 +125,12 @@ function askOperationLevel () {
       'Local'
     ]
   }]).then(a => a.levels)
+}
+
+function askInput (label) {
+  return inquirer.prompt([{
+    type: 'input',
+    name: 'input',
+    message: label
+  }]).then(a => a.input)
 }

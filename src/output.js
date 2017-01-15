@@ -1,5 +1,5 @@
-const chalk = require('chalk')
-const {table} = require('table')
+import chalk from 'chalk'
+import {table} from 'table'
 
 let tableConfig = {
   border: {
@@ -33,6 +33,8 @@ module.exports = {
   err: chalk.bold.red,
   header: chalk.bold.cyan,
   item: chalk.bold,
+  bold: chalk.bold,
+  success: chalk.green,
   desc: (x) => x,
   nl: () => console.log('\n'),
   table: (data) => table(data, tableConfig)

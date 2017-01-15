@@ -1,4 +1,4 @@
-const exec = require('./exec.js')
+import exec from './exec.js'
 
 function parseOutput (output) {
   return output
@@ -25,14 +25,33 @@ function getLocalConfig () {
   return getConfig('local')
 }
 
-function getConfig (level) {
-  return exec(`git config --${level} -l`).then(stdout => {
-    return parseOutput(stdout.toString())
-  })
+function setSystemConfig (key, value) {
+  return setConfig(key, value, 'system')
+}
+
+function setGlobalConfig (key, value) {
+  return setConfig(key, value, 'global')
+}
+
+function setLocalConfig (key, value) {
+  return setConfig(key, value, 'local')
+}
+
+async function getConfig (level) {
+  let stdout = await exec(`git config --${level} -l`)
+  return parseOutput(stdout.toString())
+}
+
+async function setConfig (key, value, level) {
+  console.log(`Setting --${level} ${key} "${value.split('"').join('\\"')}"`)
+  await exec(`git config --${level} ${key} "${value.split('"').join('\\"')}"`)
 }
 
 module.exports = {
   getSystemConfig,
   getGlobalConfig,
-  getLocalConfig
+  getLocalConfig,
+  setSystemConfig,
+  setGlobalConfig,
+  setLocalConfig
 }
