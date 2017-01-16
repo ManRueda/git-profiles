@@ -32,6 +32,7 @@ function readJsonFile (dir) {
       if (err) {
         reject(err)
       }
+      data = data === '' ? '{}' : data
       resolve(JSON.parse(data))
     })
   })

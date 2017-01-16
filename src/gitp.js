@@ -1,28 +1,41 @@
 #! /usr/bin/env node
 import { err, header, item, success, bold, table, desc } from './output.js'
-import { createProfile, getProfile, listProfiles, removeProfile } from './profiles.js'
+import { createProfile, getProfile, listProfiles, removeProfile, setConfig, getConfig } from './profiles.js'
 import { getSystemConfig, getGlobalConfig, getLocalConfig, setSystemConfig, setGlobalConfig, setLocalConfig } from './git-config.js'
 import inquirer from 'inquirer'
 
 async function main () {
   let operation = await askOperation()
-  console.log(operation)
   if (operation === 'See my current profile and configuration') {
     let levels = await askOperationLevel()
+    let config = await getConfig()
+
+    let currentConfig = {
+      system: await getSystemConfig(),
+      global: await getGlobalConfig(),
+      local: await getLocalConfig()
+    }
+    if (config.current) {
+      let profile = await getProfile(config.current)
+      config.current = JSON.stringify(currentConfig) === JSON.stringify(profile) ? config.current : null
+    }
+
+    console.log('\n')
+    console.log('\n')
+    console.log(header(`Current profile: ${config.current || '<not set>'}`))
+    console.log('\n')
+
     if (levels.includes('System')) {
-      let configs = await getSystemConfig()
       console.log(header('System level config:'))
-      logConfigs(configs)
+      logConfigs(currentConfig.system)
     }
     if (levels.includes('Global')) {
-      let configs = await getGlobalConfig()
       console.log(header('Global level config:'))
-      logConfigs(configs)
+      logConfigs(currentConfig.global)
     }
     if (levels.includes('Local')) {
-      let configs = await getLocalConfig()
       console.log(header('Local level config:'))
-      logConfigs(configs)
+      logConfigs(currentConfig.local)
     }
   }
 
@@ -44,19 +57,23 @@ async function main () {
   if (operation === 'Load profile') {
     let profiles = await listProfiles()
     let selected = await askProfile(profiles)
-    let config = await getProfile(selected)
+    let profile = await getProfile(selected)
 
-    for (let {key, value} of config.system) {
+    for (let {key, value} of profile.system) {
       await setSystemConfig(key, value)
     }
 
-    for (let {key, value} of config.global) {
+    for (let {key, value} of profile.global) {
       await setGlobalConfig(key, value)
     }
 
-    for (let {key, value} of config.local) {
+    for (let {key, value} of profile.local) {
       await setLocalConfig(key, value)
     }
+
+    let config = await getConfig()
+    config.current = selected
+    await setConfig(config)
 
     console.log(success(`Profile ${bold(selected)} loaded`))
   }
