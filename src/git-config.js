@@ -43,7 +43,6 @@ async function getConfig (level) {
 }
 
 async function setConfig (key, value, level) {
-  console.log(`Setting --${level} ${key} "${value.split('"').join('\\"')}"`)
   await exec(`git config --${level} ${key} "${value.split('"').join('\\"')}"`)
 }
 
